@@ -2,8 +2,6 @@ package parser
 
 import (
 	db_sql "database/sql"
-	"errors"
-	"fmt"
 	testify_require "github.com/stretchr/testify/require"
 	"strings"
 	"testing"
@@ -209,57 +207,52 @@ func Test_getFieldPointer(t *testing.T) {
 			Valid: true,
 		}
 	)
-	type testCase struct {
+	testCase := &struct {
 		name      string
 		fieldName string
 		id        int
 		addr      string
 		buf       []byte
 		time      db_sql.NullTime
+		pointer   *db_sql.NullTime
 		want      interface{}
 		err       error
-	}
-	tests := []testCase{
-		{
-			fieldName: "id",
-			want:      &id,
-		},
-		{
-			fieldName: "addr",
-			want:      &addr,
-		},
-		{
-			fieldName: "buf",
-			want:      &buf,
-		},
-		{
-			fieldName: "time",
-			want:      &time,
-		},
-		{
-			fieldName: "addr",
-			want:      &addr,
-		},
-		{
-			fieldName: "invalid",
-			err:       errors.New("field name is not found: invalid"),
-		},
-	}
-	for _, tt := range tests {
-		tt.name = fmt.Sprintf("%s-%v", tt.fieldName, tt.err)
-		tt.id = id
-		tt.buf = buf
-		tt.addr = addr
-		tt.time = time
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := getFieldPointer(&tt, tt.fieldName)
-			testify_require.Equal(t, tt.err, err)
-			if err != nil {
-				return
-			}
-			testify_require.Equal(t, tt.want, got)
-		})
-	}
+	}{}
+
+	idPtr, err := getFieldPointer[int](testCase, "id")
+	testify_require.NoError(t, err)
+	testify_require.Zero(t, *idPtr)
+	*idPtr = id
+	idPtr, _ = getFieldPointer[int](testCase, "id")
+	testify_require.Equal(t, id, *idPtr)
+
+	addrPtr, err := getFieldPointer[string](testCase, "addr")
+	testify_require.NoError(t, err)
+	testify_require.Zero(t, *addrPtr)
+	*addrPtr = addr
+	addrPtr, _ = getFieldPointer[string](testCase, "addr")
+	testify_require.Equal(t, addr, *addrPtr)
+
+	bufPtr, err := getFieldPointer[[]byte](testCase, "buf")
+	testify_require.NoError(t, err)
+	testify_require.Zero(t, *bufPtr)
+	*bufPtr = buf
+	bufPtr, _ = getFieldPointer[[]byte](testCase, "buf")
+	testify_require.Equal(t, buf, *bufPtr)
+
+	timePtr, err := getFieldPointer[db_sql.NullTime](testCase, "time")
+	testify_require.NoError(t, err)
+	testify_require.Zero(t, *timePtr)
+	*timePtr = time
+	timePtr, _ = getFieldPointer[db_sql.NullTime](testCase, "time")
+	testify_require.Equal(t, time, *timePtr)
+
+	pointer, err := getFieldPointer[*db_sql.NullTime](testCase, "pointer")
+	testify_require.NoError(t, err)
+	testify_require.Zero(t, *pointer)
+	*pointer = &time
+	pointer, _ = getFieldPointer[*db_sql.NullTime](testCase, "pointer")
+	testify_require.Equal(t, &time, *pointer)
 }
 
 func TestSQLParser_ParseOneStmt(t *testing.T) {

@@ -134,14 +134,14 @@ func (p *Tokenizer) parseReader() (stmt []ast.StmtNode, err error) {
 }
 
 func (p *Tokenizer) getParserResult() ([]ast.StmtNode, error) {
-	nodes, err := getFieldPointer(p.Parser, "result")
+	nodes, err := getFieldPointer[[]ast.StmtNode](p.Parser, "result")
 	if err != nil {
 		return nil, err
 	}
-	return *nodes.(*[]ast.StmtNode), nil
+	return *nodes, nil
 }
 
-func getFieldPointer(obj interface{}, fieldName string) (interface{}, error) {
+func getFieldPointer[T interface{}](obj interface{}, fieldName string) (*T, error) {
 	val := reflect.ValueOf(obj)
 	if val.Kind() != reflect.Pointer {
 		return nil, errors.New("value kind is not Pointer: " + val.Kind().String())
@@ -154,24 +154,28 @@ func getFieldPointer(obj interface{}, fieldName string) (interface{}, error) {
 	if field.Kind() == reflect.Invalid {
 		return nil, errors.New("field name is not found: " + fieldName)
 	}
-	return reflect.NewAt(field.Type(), field.Addr().UnsafePointer()).Interface(), nil
+	ptr, ok := reflect.NewAt(field.Type(), field.Addr().UnsafePointer()).Interface().(*T)
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("field type is not %T", new(T)))
+	}
+	return ptr, nil
 }
 
 func (p *Tokenizer) getParserOffset() (stmtStartPos, lastScanOffset int, err error) {
-	lexer, err := getFieldPointer(p.Parser, "lexer")
+	lexer, err := getFieldPointer[int](p.Parser, "lexer")
 	if err != nil {
 		return 0, 0, err
 	}
-	pos, err := getFieldPointer(lexer, "stmtStartPos")
+	pos, err := getFieldPointer[int](lexer, "stmtStartPos")
 	if err != nil {
 		return 0, 0, err
 	}
-	off, err := getFieldPointer(lexer, "lastScanOffset")
+	off, err := getFieldPointer[int](lexer, "lastScanOffset")
 	if err != nil {
 		return 0, 0, err
 	}
 
-	return *(pos.(*int)), *(off.(*int)), nil
+	return *pos, *off, nil
 }
 
 // ParseOneStmt parses a query and returns an ast.StmtNode.
